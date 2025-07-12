@@ -15,6 +15,8 @@ export default function EntryForm({
     item: '',
     remark: '',
   });
+  
+  const [copyStatus, setCopyStatus] = useState(''); // State for copy feedback
 
   useEffect(() => {
     if (initialData) {
@@ -27,6 +29,18 @@ export default function EntryForm({
     onSubmit(formData);
     if (!initialData) {
       setFormData({ subject: '', category: '', item: '', remark: '' });
+    }
+  };
+
+  // Function to copy item text to clipboard
+  const handleCopyItem = async () => {
+    try {
+      await navigator.clipboard.writeText(formData.item);
+      setCopyStatus('Copied!');
+      setTimeout(() => setCopyStatus(''), 2000); // Clear status after 2 seconds
+    } catch (err) {
+      setCopyStatus('Copy failed!');
+      console.error('Failed to copy:', err);
     }
   };
 
@@ -54,15 +68,45 @@ export default function EntryForm({
           />
         </div>
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Trick/Hack</label>
-          <textarea
-            value={formData.item}
-            onChange={(e) => setFormData({ ...formData, item: e.target.value })}
-            className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            rows={3}
-            placeholder="Describe your trick or hack..."
-            required
-          />
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-sm font-medium text-gray-700">Trick/Hack</label>
+            {copyStatus && (
+              <span className="text-xs text-green-600 transition-opacity duration-300">
+                {copyStatus}
+              </span>
+            )}
+          </div>
+          <div className="relative">
+            <textarea
+              value={formData.item}
+              onChange={(e) => setFormData({ ...formData, item: e.target.value })}
+              className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm pr-10"
+              rows={3}
+              placeholder="Describe your trick or hack..."
+              required
+            />
+            <button
+              type="button"
+              onClick={handleCopyItem}
+              disabled={!formData.item}
+              className={`absolute right-2 bottom-2 p-1 rounded ${
+                formData.item 
+                  ? 'text-gray-500 hover:text-gray-700 hover:bg-gray-100' 
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
+              aria-label="Copy to clipboard"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-5 w-5" 
+                viewBox="0 0 20 20" 
+                fill="currentColor"
+              >
+                <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">

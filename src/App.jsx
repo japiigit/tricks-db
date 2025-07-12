@@ -31,10 +31,10 @@ function App() {
     if (window.electronAPI) {
       try {
         if (editingEntry) {
-          await window.electronAPI.updateEntry(editingEntry.id, entryData); // Fixed typo and added semicolon
+          await window.electronAPI.updateEntry(editingEntry.id, entryData);
           setEditingEntry(null);
         } else {
-          await window.electronAPI.addEntry(entryData); // Added semicolon
+          await window.electronAPI.addEntry(entryData);
         }
         window.electronAPI.getTricks().then(setTricks);
         window.electronAPI.getSubjects().then(setSubjects);
@@ -65,6 +65,18 @@ function App() {
         alert(`Delete failed: ${error.message}`);
       }
     }
+  };
+
+  // Function to copy item text to clipboard
+  const handleCopyItem = (text) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        alert('Copied to clipboard!');
+      })
+      .catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Copy failed');
+      });
   };
 
   const filteredTricks = tricks.filter(
@@ -115,7 +127,24 @@ function App() {
                 <tr key={trick.id} className="border-t">
                   <td className="p-2">{trick.subject}</td>
                   <td className="p-2">{trick.category}</td>
-                  <td className="p-2">{trick.item}</td>
+                  <td className="p-2">
+                    <div className="flex items-center">
+                      <span className="mr-2">{trick.item}</span>
+                      <button
+                        onClick={() => handleCopyItem(trick.item)}
+                        className="text-blue-500 hover:text-blue-700"
+                        title="Copy to clipboard"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" 
+                             className="h-5 w-5" 
+                             viewBox="0 0 20 20" 
+                             fill="currentColor">
+                          <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                          <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
                   <td className="p-2">{trick.remark}</td>
                   <td className="p-2">
                     <button
