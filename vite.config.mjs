@@ -6,14 +6,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3001,
-    strictPort: true
+    strictPort: true,
   },
   build: {
     outDir: '../dist',
     emptyOutDir: true,
-    sourcemap: true
+    sourcemap: true,
   },
   css: {
-    postcss: './postcss.config.cjs'
-  }
+    postcss: './postcss.config.cjs',
+  },
 });

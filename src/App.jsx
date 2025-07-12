@@ -1,55 +1,140 @@
 import React, { useState, useEffect } from 'react';
-import EntryForm from './components/EntryForm'; // Add this import
+import EntryForm from './components/EntryForm';
+import './styles/tailwind.css';
 
 function App() {
-  const [electronStatus, setElectronStatus] = useState('pending');
+  const [tricks, setTricks] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [categories, setCategories] = useState([]); // Step 1
+  const [categories, setCategories] = useState([]);
+  const [search, setSearch] = useState('');
+  const [editingEntry, setEditingEntry] = useState(null);
 
-  // Existing useEffect remains unchanged
+  useEffect(() => {
+    if (window.electronAPI) {
+      window.electronAPI.getTricks().then(setTricks);
+      window.electronAPI.getSubjects().then(setSubjects);
+      window.electronAPI.getCategories().then(setCategories);
+    }
+  }, []);
 
-  // Step 2: Add handlers
   const handleAddSubject = (subjectName) => {
-    const newSubject = { id: Date.now(), name: subjectName };
-    setSubjects([...subjects, newSubject]);
+    setSubjects([...subjects, { id: Date.now(), name: subjectName }]);
     return subjectName;
   };
 
   const handleAddCategory = (categoryName) => {
-    const newCategory = { id: Date.now(), name: categoryName };
-    setCategories([...categories, newCategory]);
+    setCategories([...categories, { id: Date.now(), name: categoryName }]);
     return categoryName;
   };
 
-  const handleSubmitEntry = (entryData) => {
-    console.log('New entry added:', entryData);
-    // Will save to database later
+  const handleSubmitEntry = async (entryData) => {
+    if (window.electronAPI) {
+      try {
+        if (editingEntry) {
+          await window.electronAPI.updateEntry(editingEntry.id, entryData); // Fixed typo and added semicolon
+          setEditingEntry(null);
+        } else {
+          await window.electronAPI.addEntry(entryData); // Added semicolon
+        }
+        window.electronAPI.getTricks().then(setTricks);
+        window.electronAPI.getSubjects().then(setSubjects);
+        window.electronAPI.getCategories().then(setCategories);
+        alert(editingEntry ? 'Entry updated successfully!' : 'Entry saved successfully!');
+      } catch (error) {
+        console.error('Failed to save entry:', error);
+        alert(`Save failed: ${error.message}`);
+      }
+    } else {
+      console.log('Not running in Electron - entry would be:', entryData);
+      alert('In Electron, this would save to your database!');
+    }
   };
 
-  // Existing getStatusInfo function remains unchanged
+  const handleEdit = (trick) => {
+    setEditingEntry(trick);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.electronAPI) {
+      try {
+        await window.electronAPI.deleteEntry(id);
+        window.electronAPI.getTricks().then(setTricks);
+        alert('Entry deleted successfully!');
+      } catch (error) {
+        console.error('Failed to delete entry:', error);
+        alert(`Delete failed: ${error.message}`);
+      }
+    }
+  };
+
+  const filteredTricks = tricks.filter(
+    (trick) =>
+      trick.subject.toLowerCase().includes(search.toLowerCase()) ||
+      trick.category.toLowerCase().includes(search.toLowerCase()) ||
+      trick.item.toLowerCase().includes(search.toLowerCase()) ||
+      (trick.remark && trick.remark.toLowerCase().includes(search.toLowerCase()))
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <header className="mb-8">
-        {/* ... existing header ... */}
+        <h1 className="text-3xl font-bold">TricksVault</h1>
       </header>
-      
       <main>
-        {/* Step 4: Add EntryForm */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Add New Entry</h2>
-          <EntryForm 
+          <h2 className="text-xl font-semibold mb-4">{editingEntry ? 'Edit Entry' : 'Add New Entry'}</h2>
+          <EntryForm
             subjects={subjects}
             categories={categories}
             onAddSubject={handleAddSubject}
             onAddCategory={handleAddCategory}
             onSubmit={handleSubmitEntry}
+            initialData={editingEntry}
           />
         </div>
-        
-        {/* Existing status panel */}
-        <div className="bg-white rounded-lg shadow p-6">
-          {/* ... existing status panel content ... */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search tricks..."
+            className="border p-2 w-full mb-4 rounded"
+          />
+          <table className="w-full border">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2 text-left">Subject</th>
+                <th className="p-2 text-left">Category</th>
+                <th className="p-2 text-left">Item</th>
+                <th className="p-2 text-left">Remark</th>
+                <th className="p-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTricks.map((trick) => (
+                <tr key={trick.id} className="border-t">
+                  <td className="p-2">{trick.subject}</td>
+                  <td className="p-2">{trick.category}</td>
+                  <td className="p-2">{trick.item}</td>
+                  <td className="p-2">{trick.remark}</td>
+                  <td className="p-2">
+                    <button
+                      onClick={() => handleEdit(trick)}
+                      className="text-blue-500 mr-2 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(trick.id)}
+                      className="text-red-500 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </main>
     </div>
