@@ -59,50 +59,102 @@ export async function getCategories() {
 }
 
 export async function getTricks() {
-  if (!db) throw new Error('Database not initialized');
-  return db.all(`
-    SELECT e.id, s.name as subject, c.name as category, e.item, e.remark, e.created_at
-    FROM entries e
-    JOIN subjects s ON e.subject_id = s.id
-    JOIN categories c ON e.category_id = c.id
-  `);
+  console.log('[getTricks] Fetching tricks from database');
+  
+  if (!db) {
+    console.error('[getTricks] Database not initialized!');
+    throw new Error('Database not initialized');
+  }
+  
+  try {
+    const tricks = await db.all(`
+      SELECT e.id, s.name as subject, c.name as category, e.item, e.remark, e.created_at
+      FROM entries e
+      JOIN subjects s ON e.subject_id = s.id
+      JOIN categories c ON e.category_id = c.id
+    `);
+    
+    console.log(`[getTricks] Found ${tricks.length} tricks`);
+    if (tricks.length > 0) {
+      console.log('[getTricks] First trick:', JSON.stringify(tricks[0]));
+    }
+    
+    return tricks;
+  } catch (error) {
+    console.error('[getTricks] Error:', error.message);
+    return [];
+  }
 }
 
 export async function addEntry(entry) {
-  console.log('[DEBUG] addEntry called with:', JSON.stringify(entry));
+  console.log('[addEntry] Starting with entry:', JSON.stringify(entry));
   
   if (!db) {
-    console.error('[ERROR] Database not initialized in addEntry');
+    console.error('[addEntry] Database not initialized!');
     throw new Error('Database not initialized');
   }
-
+  
   try {
-    console.log('[DEBUG] Validating entry with Zod');
+    console.log('[addEntry] Validating entry with Zod');
     trickSchema.parse(entry);
-    const { subject, category, item, remark } = entry;
-    console.log(`[DEBUG] Validation passed: ${subject}/${category}`);
-    
-    console.log(`[DEBUG] Querying subject: ${subject}`);
+    const { subject, category, item, remark = '' } = entry;
+    console.log('[addEntry] Validation passed');
+
+    console.log(`[addEntry] Looking up subject: ${subject}`);
     let subjectRow = await db.get('SELECT id FROM subjects WHERE name = ?', subject);
-    
     if (!subjectRow) {
-      console.log(`[DEBUG] Inserting new subject: ${subject}`);
+      console.log(`[addEntry] Subject "${subject}" not found, inserting...`);
       const result = await db.run('INSERT INTO subjects (name) VALUES (?)', subject);
       subjectRow = { id: result.lastID };
+      console.log(`[addEntry] Inserted subject with id: ${subjectRow.id}`);
+    } else {
+      console.log(`[addEntry] Found subject with id: ${subjectRow.id}`);
     }
     const subjectId = subjectRow.id;
-    console.log(`[DEBUG] Using subject ID: ${subjectId}`);
 
-    // ... REST OF YOUR ORIGINAL FUNCTION CODE UNCHANGED ...
-    // Keep your existing category and entry insertion logic below
-    // (Don't change anything after this point)
+    console.log(`[addEntry] Looking up category: ${category}`);
+    let categoryRow = await db.get('SELECT id FROM categories WHERE name = ?', category);
+    if (!categoryRow) {
+      console.log(`[addEntry] Category "${category}" not found, inserting...`);
+      const result = await db.run('INSERT INTO categories (name) VALUES (?)', category);
+      categoryRow = { id: result.lastID };
+      console.log(`[addEntry] Inserted category with id: ${categoryRow.id}`);
+    } else {
+      console.log(`[addEntry] Found category with id: ${categoryRow.id}`);
+    }
+    const categoryId = categoryRow.id;
 
+    console.log(`[addEntry] Inserting entry with: subjectId=${subjectId}, categoryId=${categoryId}, item=${item}, remark=${remark}`);
+    const result = await db.run(
+      'INSERT INTO entries (subject_id, category_id, item, remark) VALUES (?, ?, ?, ?)',
+      subjectId,
+      categoryId,
+      item,
+      remark
+    );
+    console.log(`[addEntry] Insert result:`, result);
+    console.log(`[addEntry] New entry ID: ${result.lastID}`);
+
+    // Verify insertion by immediately querying
+    const newEntry = await db.get('SELECT * FROM entries WHERE id = ?', result.lastID);
+    console.log(`[addEntry] Verification query:`, newEntry ? 'Success' : 'Failed');
+
+    return {
+      id: result.lastID,
+      subject,
+      category,
+      item,
+      remark,
+    };
+    
   } catch (error) {
-    console.error('[ERROR] In addEntry:', error.message);
-    if (error.issues) console.error('Zod issues:', error.issues);
+    console.error('[addEntry] Error:', error.message);
+    console.error(error.stack);
     throw error;
   }
 }
+
+// KEEP YOUR EXISTING updateEntry FUNCTION BELOW
 export async function updateEntry(id, entry) {
   if (!db) throw new Error('Database not initialized');
   trickSchema.parse(entry);
